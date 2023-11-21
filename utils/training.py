@@ -51,7 +51,17 @@ def evaluate(model: ContinualModel, dataset: ContinualDataset, last=False) -> Tu
             continue
         correct, correct_mask_classes, total = 0.0, 0.0, 0.0
         for data in test_loader:
-            with torch.no_grad():
+            #TODO Add eval loop
+            with torch.no_grad():   
+                for _ in range(SEQUENCE_LENGTH):
+                    if env.success:
+                        break
+                    obs = torch.Tensor(env.get_vision()).to(model.device).reshape(1,1000)
+                    head_direction = one_hot(env.prev_move_global).to(model.device)
+
+                    pred = model([obs, head_direction])
+                    
+
                 inputs, labels = data
                 inputs, labels = inputs.to(model.device), labels.to(model.device)
                 if 'class-il' not in model.COMPATIBILITY:
