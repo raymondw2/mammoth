@@ -21,6 +21,15 @@ try:
 except ImportError:
     wandb = None
 
+def one_hot(num):
+    """
+    Given a number between 0-3, returns a one-hot tensor in PyTorch.
+    """
+    one_hot_vec = torch.zeros(4)
+    one_hot_vec[num] = 1
+    return one_hot_vec
+
+
 def mask_classes(outputs: torch.Tensor, dataset: ContinualDataset, k: int) -> None:
     """
     Given the output tensor, the dataset at hand and the current task,
@@ -52,35 +61,33 @@ def evaluate(model: ContinualModel, dataset: ContinualDataset, last=False) -> Tu
         correct, correct_mask_classes, total = 0.0, 0.0, 0.0
         for data in test_loader:
             #TODO Add eval loop
+            env = ContinualDataset.envs[str(k)]
+            env.reset()
             with torch.no_grad():   
                 for _ in range(SEQUENCE_LENGTH):
                     if env.success:
                         break
-                    obs = torch.Tensor(env.get_vision()).to(model.device).reshape(1,1000)
-                    head_direction = one_hot(env.prev_move_global).to(model.device)
+                    obs = torch.Tensor(env.get_vision()).reshape(1,1000)
+                    head_direction = one_hot(env.prev_move_global)
+                    obs_hd_input = torch.tensor([obs, head_direction]).to(model.device)
+                    pred = model.net(obs_hd_input)
 
-                    pred = model([obs, head_direction])
-                    
 
-                inputs, labels = data
-                inputs, labels = inputs.to(model.device), labels.to(model.device)
-                if 'class-il' not in model.COMPATIBILITY:
-                    outputs = model(inputs, k)
-                else:
-                    outputs = model(inputs)
+                    pred = pred["logits"]
+                    y = torch.tensor(env.find_optimal_move()).to(model.device).long()
+                    y = y.view(1,)
+                    labels.append(y)
 
-                _, pred = torch.max(outputs.data, 1)
-                correct += torch.sum(pred == labels).item()
-                total += labels.shape[0]
+                    pred_step = torch.argmax(pred)
+                    env.step(pred_step)
 
-                if dataset.SETTING == 'class-il':
-                    mask_classes(outputs, dataset, k)
-                    _, pred = torch.max(outputs.data, 1)
-                    correct_mask_classes += torch.sum(pred == labels).item()
+                correct += int(env.success) 
+                total += 1 
+
 
         accs.append(correct / total * 100
                     if 'class-il' in model.COMPATIBILITY else 0)
-        accs_mask_classes.append(correct_mask_classes / total * 100)
+        accs_mask_classes.append(correct / total * 100)
 
     model.net.train(status)
     return accs, accs_mask_classes
@@ -130,25 +137,36 @@ def train(model: ContinualModel, dataset: ContinualDataset,
                 results_mask_classes[t-1] = results_mask_classes[t-1] + accs[1]
 
         scheduler = dataset.get_scheduler(model, args)
+
+        env = dataset.envs[str(t)]
+
         for epoch in range(model.args.n_epochs):
             if args.model == 'joint':
                 continue
             for i, data in enumerate(train_loader):
                 if args.debug_mode and i > 3:
                     break
-                if hasattr(dataset.train_loader.dataset, 'logits'):
-                    inputs, labels, not_aug_inputs, logits = data
-                    inputs = inputs.to(model.device)
-                    labels = labels.to(model.device)
-                    not_aug_inputs = not_aug_inputs.to(model.device)
-                    logits = logits.to(model.device)
-                    loss = model.meta_observe(inputs, labels, not_aug_inputs, logits)
-                else:
-                    inputs, labels, not_aug_inputs = data
-                    inputs, labels = inputs.to(model.device), labels.to(
-                        model.device)
-                    not_aug_inputs = not_aug_inputs.to(model.device)
-                    loss = model.meta_observe(inputs, labels, not_aug_inputs)
+                inputs = []
+                labels = []
+                env.reset()
+                for _ in range(SEQUENCE_LENGTH):
+                    if env.success:
+                        break
+                    obs = torch.Tensor(env.get_vision()).reshape(1,1000)
+                    head_direction = one_hot(env.prev_move_global)
+                    obs_hd_input = torch.tensor([obs, head_direction]).to(model.device)
+                    pred = model.net(obs_hd_input)
+
+
+                    pred = pred["logits"]
+                    y = torch.tensor(env.find_optimal_move()).to(model.device).long()
+                    y = y.view(1,)
+                    labels.append(y)
+
+                    pred_step = torch.argmax(pred)
+                    env.step(pred_step)
+
+                loss = model.meta_observe(inputs, labels, inputs)
                 assert not math.isnan(loss)
                 progress_bar.prog(i, len(train_loader), epoch, t, loss)
 
