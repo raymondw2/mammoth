@@ -1,0 +1,17 @@
+/home/rlwang/.local/lib/python3.9/site-packages/torchvision/io/image.py:13: UserWarning: Failed to load image Python extension: /net/vast-storage/scratch/vast/fiete/rlwang/.local/lib/python3.9/site-packages/torchvision/image.so: undefined symbol: _ZN3c105ErrorC2ENS_14SourceLocationESs
+  warn(f"Failed to load image Python extension: {e}")
+usage: main.py [-h] [--seed SEED] [--notes NOTES] [--non_verbose {0,1}]
+               [--disable_log {0,1}] [--validation {0,1}]
+               [--ignore_other_metrics {0,1}] [--debug_mode DEBUG_MODE]
+               [--nowand {0,1}] [--wandb_entity WANDB_ENTITY]
+               [--wandb_project WANDB_PROJECT] --dataset
+               {mnist-360,perm-mnist,rot-mnist,seq-cifar10,seq-cifar100,seq-mnist,seq-tinyimg,seq-mwm}
+               --model
+               {agem,agem_r,bic,der,derpp,er,er_ace,ewc_on,fdr,gdumb,gem,gss,hal,icarl,joint,joint_gcl,lucir,lwf,lwf_mc,mer,pnn,rpc,sgd,si,xder,xder_ce,xder_rpc}
+               --lr LR [--optim_wd OPTIM_WD] [--optim_mom OPTIM_MOM]
+               [--optim_nesterov OPTIM_NESTEROV] [--n_epochs N_EPOCHS]
+               [--batch_size BATCH_SIZE] [--distributed {no,dp,ddp}]
+               --buffer_size BUFFER_SIZE [--minibatch_size MINIBATCH_SIZE]
+               --alpha ALPHA --beta BETA
+main.py: error: the following arguments are required: --alpha, --beta
+Warning: GEM and A-GEM cannot be used on Windows (quadprog required)

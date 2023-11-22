@@ -60,6 +60,7 @@ class AGem(ContinualModel):
 
             buf_inputs, buf_labels = self.buffer.get_data(self.args.minibatch_size, transform=self.transform)
             self.net.zero_grad()
+            #breakpoint()
             buf_outputs = self.net.forward(buf_inputs)
             penalty = self.loss(buf_outputs, buf_labels)
             penalty.backward()

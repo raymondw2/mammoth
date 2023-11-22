@@ -83,6 +83,7 @@ class Lwf(ContinualModel):
         outputs = self.net(inputs)
 
         mask = self.eye[self.current_task * self.cpt - 1]
+        breakpoint()
         loss = self.loss(outputs[:, mask], labels)
         if logits is not None:
             mask = self.eye[(self.current_task - 1) * self.cpt - 1]

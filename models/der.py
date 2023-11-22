@@ -36,6 +36,7 @@ class Der(ContinualModel):
         outputs = self.net(inputs)
         loss = self.loss(outputs, labels)
 
+
         if not self.buffer.is_empty():
             buf_inputs, buf_logits = self.buffer.get_data(
                 self.args.minibatch_size, transform=self.transform)

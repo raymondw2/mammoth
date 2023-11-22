@@ -38,6 +38,7 @@ class Er(ContinualModel):
             inputs = torch.cat((inputs, buf_inputs))
             labels = torch.cat((labels, buf_labels))
 
+        #breakpoint()
         outputs = self.net(inputs)
         loss = self.loss(outputs, labels)
         loss.backward()

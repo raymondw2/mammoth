@@ -61,22 +61,22 @@ def evaluate(model: ContinualModel, dataset: ContinualDataset, last=False) -> Tu
         correct, correct_mask_classes, total = 0.0, 0.0, 0.0
         for data in test_loader:
             #TODO Add eval loop
-            env = ContinualDataset.envs[str(k)]
+            env = dataset.envs[str(k)]
             env.reset()
             with torch.no_grad():   
+
+                SEQUENCE_LENGTH = 100
                 for _ in range(SEQUENCE_LENGTH):
                     if env.success:
                         break
-                    obs = torch.Tensor(env.get_vision()).reshape(1,1000)
-                    head_direction = one_hot(env.prev_move_global)
-                    obs_hd_input = torch.tensor([obs, head_direction]).to(model.device)
-                    pred = model.net(obs_hd_input)
+                    obs = torch.Tensor(env.get_vision()).reshape(1,1000).to(model.device)
+                    
+                    pred = model.net(obs.unsqueeze(dim=1))
 
-
-                    pred = pred["logits"]
+                    #print("hi")
+                    #breakpoint()
                     y = torch.tensor(env.find_optimal_move()).to(model.device).long()
                     y = y.view(1,)
-                    labels.append(y)
 
                     pred_step = torch.argmax(pred)
                     env.step(pred_step)
@@ -149,16 +149,16 @@ def train(model: ContinualModel, dataset: ContinualDataset,
                 inputs = []
                 labels = []
                 env.reset()
+                SEQUENCE_LENGTH = 100
                 for _ in range(SEQUENCE_LENGTH):
                     if env.success:
                         break
-                    obs = torch.Tensor(env.get_vision()).reshape(1,1000)
-                    head_direction = one_hot(env.prev_move_global)
-                    obs_hd_input = torch.tensor([obs, head_direction]).to(model.device)
-                    pred = model.net(obs_hd_input)
+                    obs = torch.Tensor(env.get_vision()).reshape(1,1000).to(model.device)
+                    pred = model.net(obs.unsqueeze(dim=1))
+                    
+                    inputs.append(obs)
 
-
-                    pred = pred["logits"]
+                    #breakpoint()
                     y = torch.tensor(env.find_optimal_move()).to(model.device).long()
                     y = y.view(1,)
                     labels.append(y)
@@ -166,7 +166,12 @@ def train(model: ContinualModel, dataset: ContinualDataset,
                     pred_step = torch.argmax(pred)
                     env.step(pred_step)
 
-                loss = model.meta_observe(inputs, labels, inputs)
+                inputs = torch.vstack(inputs)
+                labels = torch.vstack(labels)
+
+                #breakpoint()
+                loss = model.meta_observe(inputs, labels.view(-1), inputs)
+
                 assert not math.isnan(loss)
                 progress_bar.prog(i, len(train_loader), epoch, t, loss)
 
